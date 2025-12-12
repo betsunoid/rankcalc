@@ -415,14 +415,13 @@ const ENTRIES_KEY = "rewardcalc_entries_v_integrated_rank";
 let cfg = JSON.parse(localStorage.getItem(CFG_KEY) || "null") || DEFAULT;
 let entries = JSON.parse(localStorage.getItem(ENTRIES_KEY) || "[]");
 
-// 互換性・マイグレーションロジック
-// (以前のボタン数が少ない場合に、新しいデフォルト設定を追加する)
+// 互換性・マイグレーションロジック (省略)
+
 if (cfg.buttons.length < DEFAULT.buttons.length) {
 const startIdx = cfg.buttons.length;
 for (let i = startIdx; i < DEFAULT.buttons.length; i++) {
 cfg.buttons.push(DEFAULT.buttons[i]);
 }
-// freeButtonsも更新
 if(cfg.freeButtons.length < DEFAULT.freeButtons.length) {
 for (let i = cfg.freeButtons.length; i < DEFAULT.freeButtons.length; i++) {
 cfg.freeButtons.push(DEFAULT.freeButtons[i]);
@@ -433,7 +432,6 @@ cfg.availableRanks = DEFAULT.availableRanks;
 }
 saveCfg();
 } else if(cfg.buttons.length > DEFAULT.buttons.length) {
-// 以前のバージョンでボタンをカスタム追加していた場合に対応（今回は21個で固定）
 cfg.buttons = cfg.buttons.slice(0, DEFAULT.buttons.length);
 if(cfg.freeButtons.length > DEFAULT.freeButtons.length) {
 cfg.freeButtons = cfg.freeButtons.slice(0, DEFAULT.freeButtons.length);
@@ -456,14 +454,13 @@ const rankSelector = document.getElementById("rankSelector");
 /* ===== helpers ===== */
 function fmt(n){ return Number(n).toLocaleString() + " 円"; }
 function toInt(v){ return Math.round(Number(v) || 0); }
-// コンサート関連の名称変更に伴い、特殊な丸め処理は全て削除。
-// PDF単価は既に円未満の端数がないため、丸め処理は税込み合計にのみ適用。
+
 function applyRoundMethod(value, method){
 if(method === "ceil") return Math.ceil(value);
 if(method === "round") return Math.round(value);
 return Math.floor(value);
 }
-// 項目ごとの丸め処理は削除し、受け取った単価をそのまま使用
+
 function roundItem(name, val){
 return toInt(val);
 }
@@ -531,7 +528,7 @@ btn.innerHTML = `<div style="font-size:14px">${escapeHtml(b.name)}</div><div sty
 btn.addEventListener("click", ()=> {
 const displayName = b.name || "無名";
 const priceValue = (b.prices && b.prices[cfg.currentRank] !== undefined) ? b.prices[cfg.currentRank] : 0;
-const price = roundItem(b.name, Number(priceValue||0)); // 今回はroundItemはtoIntと同じ
+const price = roundItem(b.name, Number(priceValue||0));
 addEntry({type:"preset", name:displayName, price});
 setTimeout(jumpToTop, 300);
 });
@@ -580,7 +577,7 @@ controlBtnsArea.appendChild(btnAC);
 /* ===== render free buttons ===== */
 function renderFreeButtons(){
 freeBtnsArea.innerHTML = "";
-// 最大5個まで表示（CSSで4列になっているが、5個設定した場合は次の行に表示される）
+// 最大5個まで表示
 cfg.freeButtons.slice(0, 5).forEach((fb, idx)=>{
 const b = document.createElement("button");
 b.className = "coeff";
@@ -598,7 +595,7 @@ freeBtnsArea.appendChild(b);
 });
 }
 
-/* ===== stack rendering, totals, addEntry (unchanged) ===== */
+/* ===== stack rendering, totals, addEntry ===== */
 function renderStack(){
 stack.innerHTML = "";
 if(entries.length === 0){
@@ -642,14 +639,12 @@ taxRateSpan.textContent = taxRate;
 
 function addEntry(item){
 item.price = toInt(item.price);
-item.price = roundItem(item.name, item.price); // 今回はtoIntと同じ
+item.price = roundItem(item.name, item.price);
 entries.push(item);
 saveEntries();
 renderStack();
 renderTotals();
 }
-/* ===== end stack rendering, totals, addEntry (unchanged) ===== */
-
 
 /* settings modal logic */
 const modal = document.getElementById("modal");
@@ -689,7 +684,7 @@ container.appendChild(row);
 function renderFreeConfig(){
 const container = document.getElementById("freeConfig");
 container.innerHTML = "";
-// 5個まで表示（設定ボタンが多すぎる場合は縦スクロールで対応）
+// 5個まで表示
 cfg.freeButtons.forEach((f,i)=>{
 const row = document.createElement("div");
 row.className = "form-row";
@@ -732,7 +727,7 @@ modal.style.display = "none";
 document.body.style.overflow = "";
 });
 
-/* 💡 JSON import/export config */
+/* JSON import/export config */
 document.getElementById("importBtn").addEventListener("click", ()=> document.getElementById("importFile").click());
 document.getElementById("importFile").addEventListener("change", (ev)=>{
 const f = ev.target.files[0]; if(!f) return;
@@ -792,9 +787,9 @@ a.download = `rewardcfg_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'
 a.click();
 alert("設定ファイルのエクスポートを開始しました。");
 });
-/* 💡 end JSON import/export config */
+/* end JSON import/export config */
 
-/* 💡 ランク表（テキストファイル）インポート機能 */
+/* ランク表（テキストファイル）インポート機能 */
 document.getElementById("importPriceTableBtn").addEventListener("click", ()=> document.getElementById("importPriceTableFile").click());
 document.getElementById("importPriceTableFile").addEventListener("change", importPriceTable);
 
@@ -888,7 +883,7 @@ updatedButtonsCount++;
 
 return updatedButtonsCount;
 }
-/* 💡 end ランク表（テキストファイル）インポート機能 */
+/* end ランク表（テキストファイル）インポート機能 */
 
 
 /* init */
