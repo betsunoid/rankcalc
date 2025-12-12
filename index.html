@@ -1,0 +1,906 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>積算電卓（統合版・ランク対応）</title>
+<style>
+/* --- CSS START --- */
+:root{
+--bg:#0b0b0c;
+--card:#14171a;
+--muted:#9aa4ad;
+--accent-1:#1e90ff;
+--orange:#ff9500;
+--dark-btn:#0b0b0c;
+font-family:-apple-system, "Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);color:#fff;-webkit-font-smoothing:antialiased}
+.app{max-width:820px;margin:8px auto;padding:12px;display:flex;flex-direction:column;gap:12px}
+.header{display:flex;justify-content:space-between;align-items:center}
+.title{font-weight:800;font-size:18px}
+.sub{font-size:13px;color:var(--muted)}
+
+/* top: two-column */
+.top{display:flex;gap:12px;align-items:flex-start}
+.left{flex:2;background:linear-gradient(180deg,var(--card),#0c0f11);border-radius:12px;padding:10px;min-height:180px;max-height:340px;overflow:auto;border:1px solid rgba(255,255,255,0.03)}
+.right{width:240px;background:linear-gradient(180deg,#07080a,#0b0d10);border-radius:12px;padding:12px;border:1px solid rgba(255,255,255,0.04);position:relative}
+
+/* entry */
+.entry{display:flex;justify-content:space-between;align-items:center;padding:8px;border-bottom:1px solid rgba(255,255,255,0.02)}
+.entry .label{font-weight:700;font-size:15px}
+.entry .price{font-variant-numeric:tabular-nums;color:var(--muted);min-width:120px;text-align:right}
+.removeBtn{background:transparent;border:0;color:#ff6b6b;font-weight:800;cursor:pointer;margin-left:8px}
+
+/* totals */
+.tot-label{font-size:13px;color:var(--muted)}
+.tot-value{font-weight:800;font-size:20px;text-align:right;margin-top:4px}
+
+/* buttons */
+.grid-wrap{background:transparent;border-radius:12px;padding:8px}
+.buttons{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.btn{
+border-radius:12px;
+padding:12px 8px;
+min-height:64px;
+display:flex;
+flex-direction:column;
+justify-content:center;
+align-items:center;
+color:var(--dark-btn);
+font-weight:800;
+border:1px solid rgba(0,0,0,0.1);
+box-shadow:0 8px 18px rgba(0,0,0,0.6);
+transition:transform .06s;
+}
+.btn:active{transform:translateY(2px);filter:brightness(0.95)}
+
+/* Cボタン (既存の暖色) */
+.btn.dark{
+background:linear-gradient(180deg, #ff7f50, #ff6347);
+color:#fff;
+border:1px solid rgba(255,255,255,0.1);
+}
+/* ACボタン専用 (さらに濃い暖色) */
+.btn.ac-dark{
+background:linear-gradient(180deg, #ff4500, #cc3700);
+color:#fff;
+border:1px solid rgba(255,255,255,0.2);
+}
+/* C/ACボタン配置のためのプレースホルダー */
+.btn-placeholder{
+background:transparent;
+padding:12px 8px;
+min-height:64px;
+border-radius:12px;
+border:1px solid transparent;
+}
+
+/* free-group */
+.free-group{margin-top:10px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:12px;padding:10px;border:1px solid rgba(255,255,255,0.04);display:flex;flex-direction:column;gap:10px}
+.free-row{display:flex;gap:8px;align-items:center}
+/* 金額入力欄のスタイル */
+.free-input{flex:1;background:#202327;border:1px solid rgba(255,255,255,0.2);padding:10px;border-radius:8px;text-align:right;color:#fff;font-size:16px}
+
+/* 自由入力ボタンのコンテナスタイル */
+.coeff-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px;padding:0 8px}
+/* 自由入力ボタンのスタイル */
+.coeff{
+background:#fff;
+border:1px solid #fff;
+color:var(--dark-btn);
+padding:12px 8px;
+border-radius:12px;
+font-weight:800;
+cursor:pointer;
+min-height:64px;
+display:flex;
+flex-direction:column;
+justify-content:center;
+align-items:center;
+text-align:center;
+box-shadow:0 8px 18px rgba(0,0,0,0.6);
+transition:transform .06s;
+}
+.coeff:active{transform:translateY(2px);filter:brightness(0.95)}
+
+/* modal - 設定画面の文字とボタンを大きくする修正 */
+.modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:90;background:linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6))}
+.panel{
+width:94%;
+max-width:760px;
+max-height:86vh;
+overflow:auto;
+background:#0b0f12;
+border-radius:12px;
+padding:28px;
+border:1px solid rgba(255,255,255,0.04);
+font-size:1.2em;
+}
+.panel h3{
+font-size:1.8em;
+margin-top:0;
+}
+.form-row{
+display:flex;
+gap:16px;
+align-items:center;
+margin-bottom:16px;
+}
+.form-row label{
+font-size:1.1em;
+min-width:180px !important;
+color:var(--muted);
+}
+.form-row input[type="text"], .form-row input[type="number"], .form-row select{
+padding:16px;
+border-radius:8px;
+border:1px solid rgba(255,255,255,0.04);
+background:transparent;
+color:#fff;
+font-size:1.1em;
+}
+
+/* 設定画面ヘッダー用のCSS */
+.config-header {
+display: flex;
+gap: 16px;
+align-items: center;
+margin-bottom: 8px;
+padding-left: 36px;
+font-size: 1.1em;
+}
+.config-header > div {
+font-weight: 700;
+}
+
+
+/* PC/Tabletでの設定入力欄の幅比率調整 */
+.form-row #buttonConfig input[type="text"],
+.form-row #freeConfig input[type="text"] {
+flex-grow: 3;
+flex-shrink: 1;
+}
+.form-row #buttonConfig input[type="number"],
+.form-row #freeConfig input[type="number"] {
+flex-grow: 2;
+flex-shrink: 1;
+text-align: right;
+}
+/* 基本設定の入力欄はフル幅 */
+.form-row input[type="number"]#taxInput,
+.form-row select#roundMethod {
+flex: 1;
+}
+
+.small{font-size:13px;color:var(--muted)}
+
+.modal .action-btn{
+padding:16px 12px;
+font-size:1.1em;
+}
+
+/* モバイル対応の調整 (iPhoneなどの狭い画面) */
+@media(max-width:520px){
+.right{width:42%}
+.btn{min-height:56px;padding:10px}
+.entry .price{min-width:90px}
+
+/* 設定画面のUI要素を縮小 */
+.panel{padding:18px; font-size:1em;}
+.panel h3{font-size:1.5em;}
+.form-row{gap:8px;}
+
+/* ヘッダーも調整 */
+.config-header{
+font-size: 0.9em;
+gap: 8px;
+padding-left: 24px;
+}
+
+/* 定数/自由ボタンの設定行（横並びを維持する設定） */
+.form-row > div:first-child{ /* Index number */
+width: 24px !important;
+font-size: 1em !important;
+flex-shrink: 0;
+}
+.form-row input[type="text"],
+.form-row input[type="number"],
+.form-row select{
+padding: 10px;
+font-size: 0.9em;
+}
+/* Tax/Roundのラベルと入力欄は縦積み */
+.form-row:not(#buttonConfig .form-row):not(#freeConfig .form-row) {
+flex-wrap: wrap;
+}
+.form-row:not(#buttonConfig .form-row):not(#freeConfig .form-row) > label {
+min-width:100% !important;
+margin-bottom: -4px;
+}
+.form-row input[type="number"]#taxInput,
+.form-row select#roundMethod {
+flex: 1 1 100%;
+}
+}
+/* --- CSS END --- */
+</style>
+</head>
+<body>
+<div class="app">
+<div class="header">
+<div>
+<div class="title">積算電卓（統合版）</div>
+<div class="sub">黒基調・24定数・自由入力5つ・丸め設定</div>
+</div>
+<div style="text-align:right; display:flex; gap:12px; align-items:center;">
+<div style="text-align:right;">
+<label for="rankSelector" class="sub" style="font-size:12px; display:block; text-align: left; margin-bottom: 2px;">ランク:</label>
+<select id="rankSelector" style="padding:4px 8px;border-radius:4px;background:#202327;color:#fff;border:1px solid rgba(255,255,255,0.2);font-size:14px;min-width: 60px;"></select>
+</div>
+<button id="openSettings" class="action-btn" style="padding:8px 10px;font-size:13px">⚙ 設定</button>
+</div>
+</div>
+
+<div class="top">
+<div class="left" id="stack"></div>
+
+<div class="right">
+<div style="display:flex;justify-content:space-between;align-items:center">
+<div class="tot-label">税抜合計</div>
+<div class="tot-value" id="preTax">0 円</div>
+</div>
+<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+<div class="tot-label">消費税 (<span id="taxRate">10</span>%)</div>
+<div class="tot-value" id="tax">0 円</div>
+</div>
+<div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
+<div class="tot-label">合計（税込）</div>
+<div class="tot-value" id="total">0 円</div>
+</div>
+</div>
+</div>
+
+<div class="grid-wrap">
+<div class="buttons" id="buttonsArea" aria-hidden="false"></div>
+</div>
+
+<div class="grid-wrap" style="margin-top:10px;">
+<div class="buttons" id="controlBtnsArea">
+</div>
+</div>
+
+<div class="free-group" aria-label="自由入力グループ" style="margin-top:10px;">
+<div style="font-size:13px;color:var(--muted);">金額を入力して下の該当掛け率のボタンを押す</div>
+<div class="free-row">
+<input id="freeValue" class="free-input" type="number" placeholder="金額を入力（円）" min="0" step="1" />
+</div>
+</div>
+
+<div class="coeff-row" id="freeBtnsArea">
+</div>
+
+</div>
+
+<div class="modal" id="modal">
+<div class="panel">
+<h3>設定</h3>
+
+<div class="form-row">
+<label>消費税率（％）</label>
+<input id="taxInput" type="number" min="0" step="0.1">
+</div>
+
+<div class="form-row">
+<label>小数点以下の処理</label>
+<select id="roundMethod">
+<option value="floor">切り捨て</option>
+<option value="round">四捨五入</option>
+<option value="ceil">切り上げ</option>
+</select>
+</div>
+
+<div style="margin:16px 0;color:var(--muted)">定数ボタン（24個）の名前と**現在選択中のランク（<span id="currentRankDisplay">S</span>）**の金額を編集してください。</div>
+<div class="config-header">
+<div style="flex: 3;">名前</div>
+<div style="flex: 2; text-align: right;">金額（円）</div>
+</div>
+<div id="buttonConfig"></div>
+
+<hr style="border-color:rgba(255,255,255,0.03);" />
+
+<div style="margin:16px 0;color:var(--muted)">自由ボタン（5個まで表示可） - 名前と係数を編集してください。</div>
+<div class="config-header">
+<div style="flex: 3;">名前</div>
+<div style="flex: 2; text-align: right;">係数</div>
+</div>
+<div id="freeConfig"></div>
+
+<div style="display:flex;gap:16px;margin-top:24px;">
+<button id="saveSettingsBtn" class="action-btn" style="background:#0b8a44;border:none; color: #fff;">保存</button>
+<button id="closeModal" class="action-btn" style="background:#222;color:#fff">閉じる</button>
+</div>
+
+<hr style="border-color:rgba(255,255,255,0.03); margin-top: 24px;" />
+
+<div style="margin:16px 0;color:var(--muted)">**設定の同期・バックアップ（JSONファイル）**</div>
+<div style="display:flex;gap:16px;margin-top:8px;">
+<button id="exportSettingsBtn" class="action-btn" style="background:#555;border:none; color: #fff; flex:1;">設定のエクスポート (JSON)</button>
+<button id="importBtn" class="action-btn" style="background:#4070ff;border:none; color: #fff; flex:1;">設定のインポート (JSON)</button>
+<input type="file" id="importFile" accept=".json" style="display:none;" />
+</div>
+
+<hr style="border-color:rgba(255,255,255,0.03); margin-top: 24px;" />
+<div style="margin:16px 0;color:var(--muted)">**報酬ランク表（テキストファイル）から更新**</div>
+<div class="small" style="margin-bottom: 8px; color: #ffeb3b;">
+※ PDFからテーブルデータをコピーし、テキストファイル（CSV, タブ区切り）として保存したファイルが必要です。
+</div>
+<div style="display:flex;gap:16px;margin-top:8px;">
+<button id="importPriceTableBtn" class="action-btn" style="background:#00bcd4;border:none; color: #fff; flex:1;">ランク表をインポート</button>
+<input type="file" id="importPriceTableFile" accept=".txt,.csv,.tsv" style="display:none;" />
+</div>
+<div style="margin-top:20px;font-size:1em;color:var(--muted)">
+※Cは直前の追加を取り消し、ACは積算を全てクリアします。
+※ 報酬ランクの追加・変更は、HTMLファイルの`<script>`タグ内にある`DEFAULT`変数を直接編集してください。
+</div>
+</div>
+</div>
+
+<script>
+/* ===== defaults & storage keys ===== */
+// 💡 PDFの列順に合わせてHからSSSまでの11ランクに更新
+const DEFAULT_RANKS = ["H", "G", "F", "E", "D", "C", "B", "A", "S", "SS", "SSS"];
+const DEFAULT = {
+taxRate: 10,
+roundMethod: "floor",
+currentRank: "S", // 初期表示ランク
+availableRanks: DEFAULT_RANKS,
+buttons: [
+// 1. 定期UP
+{name:"定期UP", prices:{H:6775, G:7462, F:7855, E:8149, D:8444, C:8836, B:9425, A:9524, S:9818, SS:10113, SSS:10211}},
+// 2. 定期GP
+{name:"定期GP", prices:{H:8444, G:9327, F:9818, E:10211, D:10505, C:10996, B:11684, A:11880, S:12273, SS:12567, SSS:12764}},
+// 3. 普通UP
+{name:"普通UP", prices:{H:7756, G:8542, F:9033, E:9327, D:9622, C:10113, B:10702, A:10898, S:11193, SS:11487, SSS:11684}},
+// 4. 普通GP
+{name:"普通GP", prices:{H:9425, G:10407, F:10996, E:11389, D:11684, C:12273, B:13058, A:13255, S:13647, SS:14040, SSS:14236}},
+// 5. 音教備品UP
+{name:"音教備品UP", prices:{H:6382, G:6382, F:6382, E:6382, D:6382, C:6382, B:6382, A:6382, S:6382, SS:6382, SSS:6382}},
+// 6. 音教備品GP
+{name:"音教備品GP", prices:{H:7855, G:7855, F:7855, E:7855, D:7855, C:7855, B:7855, A:7855, S:7855, SS:7855, SSS:7855}},
+// 7. 納調UP (新品/中古)
+{name:"納調UP (新品/中古)", prices:{H:5891, G:5891, F:5891, E:5891, D:5891, C:5891, B:5891, A:5891, S:5891, SS:5891, SSS:5891}},
+// 8. 納調GP (新品/中古)
+{name:"納調GP (新品/中古)", prices:{H:8836, G:8836, F:8836, E:8836, D:8836, C:8836, B:8836, A:8836, S:8836, SS:8836, SSS:8836}},
+// 9. 店頭UP (名古屋店)
+{name:"店頭UP (名古屋店)", prices:{H:6382, G:6382, F:6382, E:6382, D:6382, C:6382, B:6382, A:6382, S:6382, SS:6382, SSS:6382}},
+// 10. 店頭GP (名古屋店)
+{name:"店頭GP (名古屋店)", prices:{H:7953, G:7953, F:7953, E:7953, D:7953, C:7953, B:7953, A:7953, S:7953, SS:7953, SSS:7953}},
+// 11. 店頭UP (RPS) - 追加
+{name:"店頭UP (RPS)", prices:{H:6382, G:6382, F:6382, E:6382, D:6382, C:6382, B:6382, A:6382, S:6382, SS:6382, SSS:6382}},
+// 12. 店頭GP (RPS)
+{name:"店頭GP (RPS)", prices:{H:8836, G:8836, F:8836, E:8836, D:8836, C:8836, B:8836, A:8836, S:8836, SS:8836, SSS:8836}},
+// 13. 学校UP
+{name:"学校UP", prices:{H:4811, G:4811, F:4811, E:4811, D:5302, C:5302, B:5891, A:5891, S:5891, SS:5891, SSS:5891}},
+// 14. 学校GP
+{name:"学校GP", prices:{H:5793, G:5793, F:5793, E:5793, D:6578, C:6578, B:7265, A:7265, S:7265, SS:7265, SSS:7265}},
+// 15. 学校CF/S - 追加
+{name:"学校CF/S", prices:{H:6578, G:6578, F:7265, E:7265, D:7855, C:7855, B:8542, A:8542, S:8542, SS:8542, SSS:8542}},
+// 16. 学校SW/B - 追加
+{name:"学校SW/B", prices:{H:6775, G:6775, F:7462, E:7462, D:8247, C:8247, B:8935, A:8935, S:8935, SS:8935, SSS:8935}},
+// 17. ヤマハホール
+{name:"ヤマハホール", prices:{H:12764, G:12764, F:12764, E:12764, D:12764, C:12764, B:12764, A:12764, S:12764, SS:12764, SSS:12764}},
+// 18. 日当
+{name:"日当", prices:{H:13745, G:14727, F:15709, E:16691, D:17673, C:18655, B:19636, A:19636, S:19636, SS:19636, SSS:19636}},
+// 19. 出張費3000
+{name:"出張費3000", prices:{H:2356, G:2356, F:2356, E:2356, D:2356, C:2356, B:2356, A:2356, S:2356, SS:2356, SSS:2356}},
+// 20. 出張費3500
+{name:"出張費3500", prices:{H:2847, G:2847, F:2847, E:2847, D:2847, C:2847, B:2847, A:2847, S:2847, SS:2847, SSS:2847}},
+// 21. 出張費4000
+{name:"出張費4000", prices:{H:3338, G:3338, F:3338, E:3338, D:3338, C:3338, B:3338, A:3338, S:3338, SS:3338, SSS:3338}}
+],
+freeButtons: [
+{name:"修理(%)", coeff:0.8836}, // Sランクの値 (88.36%)
+{name:"クレーム・保守(%)", coeff:0.6873}, // Sランクの値 (68.73%)
+{name:"部品代", coeff:1},
+{name:"立会い", coeff:0.864},
+{name:"コンサート(%)", coeff:0.7658}
+]
+};
+const CFG_KEY = "rewardcalc_cfg_v_integrated_rank";
+const ENTRIES_KEY = "rewardcalc_entries_v_integrated_rank";
+
+/* ===== state ===== */
+let cfg = JSON.parse(localStorage.getItem(CFG_KEY) || "null") || DEFAULT;
+let entries = JSON.parse(localStorage.getItem(ENTRIES_KEY) || "[]");
+
+// 互換性・マイグレーションロジック
+// (以前のボタン数が少ない場合に、新しいデフォルト設定を追加する)
+if (cfg.buttons.length < DEFAULT.buttons.length) {
+const startIdx = cfg.buttons.length;
+for (let i = startIdx; i < DEFAULT.buttons.length; i++) {
+cfg.buttons.push(DEFAULT.buttons[i]);
+}
+// freeButtonsも更新
+if(cfg.freeButtons.length < DEFAULT.freeButtons.length) {
+for (let i = cfg.freeButtons.length; i < DEFAULT.freeButtons.length; i++) {
+cfg.freeButtons.push(DEFAULT.freeButtons[i]);
+}
+}
+if (!cfg.availableRanks || !Array.isArray(cfg.availableRanks) || cfg.availableRanks.length !== DEFAULT_RANKS.length) {
+cfg.availableRanks = DEFAULT.availableRanks;
+}
+saveCfg();
+} else if(cfg.buttons.length > DEFAULT.buttons.length) {
+// 以前のバージョンでボタンをカスタム追加していた場合に対応（今回は21個で固定）
+cfg.buttons = cfg.buttons.slice(0, DEFAULT.buttons.length);
+if(cfg.freeButtons.length > DEFAULT.freeButtons.length) {
+cfg.freeButtons = cfg.freeButtons.slice(0, DEFAULT.freeButtons.length);
+}
+saveCfg();
+}
+
+/* ===== elems ===== */
+const buttonsArea = document.getElementById("buttonsArea");
+const controlBtnsArea = document.getElementById("controlBtnsArea");
+const stack = document.getElementById("stack");
+const preTaxEl = document.getElementById("preTax");
+const taxEl = document.getElementById("tax");
+const totalEl = document.getElementById("total");
+const taxRateSpan = document.getElementById("taxRate");
+const freeValue = document.getElementById("freeValue");
+const freeBtnsArea = document.getElementById("freeBtnsArea");
+const rankSelector = document.getElementById("rankSelector");
+
+/* ===== helpers ===== */
+function fmt(n){ return Number(n).toLocaleString() + " 円"; }
+function toInt(v){ return Math.round(Number(v) || 0); }
+// コンサート関連の名称変更に伴い、特殊な丸め処理は全て削除。
+// PDF単価は既に円未満の端数がないため、丸め処理は税込み合計にのみ適用。
+function applyRoundMethod(value, method){
+if(method === "ceil") return Math.ceil(value);
+if(method === "round") return Math.round(value);
+return Math.floor(value);
+}
+// 項目ごとの丸め処理は削除し、受け取った単価をそのまま使用
+function roundItem(name, val){
+return toInt(val);
+}
+
+function saveCfg(){ localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); }
+function saveEntries(){ localStorage.setItem(ENTRIES_KEY, JSON.stringify(entries)); }
+
+function jumpToTop(){
+stack.scrollTop = 0;
+window.scrollTo(0, 0);
+}
+
+/* ===== rank selector ===== */
+function renderRankSelector() {
+if (!rankSelector) return;
+rankSelector.innerHTML = "";
+(cfg.availableRanks || DEFAULT_RANKS).forEach(rank => {
+const option = document.createElement("option");
+option.value = rank;
+option.textContent = rank;
+if (rank === cfg.currentRank) {
+option.selected = true;
+}
+rankSelector.appendChild(option);
+});
+
+rankSelector.addEventListener("change", (ev) => {
+cfg.currentRank = ev.target.value;
+saveCfg();
+renderButtons();
+});
+}
+
+
+/* ===== render buttons grid (24 constants) ===== */
+function renderButtons(){
+buttonsArea.innerHTML = "";
+
+const COLOR_LIGHT = 'linear-gradient(180deg, hsl(200, 85%, 90%), hsl(200, 85%, 80%))';
+const COLOR_DARK = 'linear-gradient(180deg, hsl(200, 70%, 60%), hsl(200, 70%, 50%))';
+
+for(let i=0;i<24;i++){
+const b = cfg.buttons[i];
+
+// 設定項目が21個なので、22番目以降は空ボタンにする
+if (!b) {
+const emptyBtn = document.createElement("div");
+emptyBtn.className = "btn-placeholder"; // CSSで透過的に設定
+buttonsArea.appendChild(emptyBtn);
+continue;
+}
+
+const col = i % 4;
+const btn = document.createElement("button");
+btn.className = "btn";
+
+const isDark = (col % 2 === 0);
+btn.style.background = isDark ? COLOR_DARK : COLOR_LIGHT;
+btn.style.color = isDark ? '#fff' : 'var(--dark-btn)';
+
+const currentPrice = (b.prices && b.prices[cfg.currentRank] !== undefined) ? b.prices[cfg.currentRank] : 0;
+
+const priceColor = isDark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.8)';
+btn.innerHTML = `<div style="font-size:14px">${escapeHtml(b.name)}</div><div style="font-size:13px;margin-top:6px;color:${priceColor}">${currentPrice ? currentPrice.toLocaleString()+' 円':''}</div>`;
+btn.addEventListener("click", ()=> {
+const displayName = b.name || "無名";
+const priceValue = (b.prices && b.prices[cfg.currentRank] !== undefined) ? b.prices[cfg.currentRank] : 0;
+const price = roundItem(b.name, Number(priceValue||0)); // 今回はroundItemはtoIntと同じ
+addEntry({type:"preset", name:displayName, price});
+setTimeout(jumpToTop, 300);
+});
+
+buttonsArea.appendChild(btn);
+}
+}
+
+/* ===== render control buttons (C/AC) ===== */
+function renderControlButtons() {
+controlBtnsArea.innerHTML = "";
+
+const empty1 = document.createElement("div");
+empty1.className = "btn-placeholder";
+
+const empty2 = document.createElement("div");
+empty2.className = "btn-placeholder";
+
+const btnC = document.createElement("button");
+btnC.className = "btn dark";
+btnC.innerHTML = `<div style="font-size:16px;color:#fff;">C</div><div style="font-size:12px;margin-top:6px;color:#fff">直前の取り消し</div>`;
+btnC.addEventListener("click", ()=> {
+if(entries.length>0) entries.pop();
+saveEntries(); renderStack(); renderTotals();
+setTimeout(jumpToTop, 100);
+});
+
+const btnAC = document.createElement("button");
+btnAC.className = "btn ac-dark";
+btnAC.innerHTML = `<div style="font-size:14px;color:#fff;">AC</div><div style="font-size:12px;margin-top:6px;color:#fff">全てクリア</div>`;
+btnAC.addEventListener("click", ()=> {
+entries=[];
+saveEntries();
+renderStack();
+renderTotals();
+document.getElementById("freeValue").value = "";
+setTimeout(jumpToTop, 100);
+});
+
+controlBtnsArea.appendChild(empty1);
+controlBtnsArea.appendChild(empty2);
+controlBtnsArea.appendChild(btnC);
+controlBtnsArea.appendChild(btnAC);
+}
+
+/* ===== render free buttons ===== */
+function renderFreeButtons(){
+freeBtnsArea.innerHTML = "";
+// 最大5個まで表示（CSSで4列になっているが、5個設定した場合は次の行に表示される）
+cfg.freeButtons.slice(0, 5).forEach((fb, idx)=>{
+const b = document.createElement("button");
+b.className = "coeff";
+b.innerHTML = `<div style="font-size:14px">${escapeHtml(fb.name)}</div><div style="font-size:13px;margin-top:6px;color:var(--dark-btn)">×${fb.coeff}</div>`;
+b.addEventListener("click", ()=>{
+const v = toInt(freeValue.value);
+if(!v){ alert("金額を入力してください（円）。"); return; }
+const raw = v * Number(fb.coeff);
+const price = roundItem(fb.name, raw);
+addEntry({type:"free", name:fb.name, price});
+freeValue.value = "";
+setTimeout(jumpToTop, 300);
+});
+freeBtnsArea.appendChild(b);
+});
+}
+
+/* ===== stack rendering, totals, addEntry (unchanged) ===== */
+function renderStack(){
+stack.innerHTML = "";
+if(entries.length === 0){
+const p = document.createElement("div");
+p.className = "small";
+p.style.padding="8px";
+p.textContent = "まだ項目がありません。ボタンを押してください。";
+stack.appendChild(p);
+return;
+}
+entries.forEach((e, i)=>{
+const row = document.createElement("div");
+row.className = "entry";
+row.innerHTML = `<div style="display:flex;gap:10px;align-items:center"><div class="label">${escapeHtml(e.name)}</div><div class="small" style="color:var(--muted);font-size:12px">${e.type==="free" ? "（自由入力）": ""}</div></div><div style="display:flex;align-items:center"><div class="price">${Number(e.price).toLocaleString()} 円</div><button class="removeBtn" data-i="${i}">×</button></div>`;
+stack.appendChild(row);
+});
+stack.querySelectorAll(".removeBtn").forEach(btn=>{
+btn.addEventListener("click", (ev)=>{
+const idx = Number(ev.currentTarget.dataset.i);
+entries.splice(idx,1);
+saveEntries();
+renderStack();
+renderTotals();
+setTimeout(jumpToTop, 100);
+});
+});
+}
+
+function renderTotals(){
+let pre = 0;
+entries.forEach(e=> pre += Number(e.price||0));
+const taxRate = Number(cfg.taxRate || 0);
+// 税額の計算と丸めはここで実行
+const tax = applyRoundMethod(pre * taxRate / 100, cfg.roundMethod || "floor");
+const tot = pre + tax;
+preTaxEl.textContent = fmt(pre);
+taxEl.textContent = fmt(tax);
+totalEl.textContent = fmt(tot);
+taxRateSpan.textContent = taxRate;
+}
+
+function addEntry(item){
+item.price = toInt(item.price);
+item.price = roundItem(item.name, item.price); // 今回はtoIntと同じ
+entries.push(item);
+saveEntries();
+renderStack();
+renderTotals();
+}
+/* ===== end stack rendering, totals, addEntry (unchanged) ===== */
+
+
+/* settings modal logic */
+const modal = document.getElementById("modal");
+document.getElementById("openSettings").addEventListener("click", openSettings);
+document.getElementById("closeModal").addEventListener("click", ()=>{ modal.style.display="none"; document.body.style.overflow=""; });
+
+function openSettings(){
+modal.style.display = "flex";
+document.body.style.overflow = "hidden";
+document.getElementById("taxInput").value = cfg.taxRate || 0;
+document.getElementById("roundMethod").value = cfg.roundMethod || "floor";
+
+document.getElementById("currentRankDisplay").textContent = cfg.currentRank;
+
+renderButtonConfig();
+renderFreeConfig();
+}
+
+function renderButtonConfig(){
+const container = document.getElementById("buttonConfig");
+container.innerHTML = "";
+const currentRank = cfg.currentRank;
+
+// 存在するボタンのみ表示
+cfg.buttons.forEach((b,i)=>{
+const currentPrice = (b.prices && b.prices[currentRank] !== undefined) ? b.prices[currentRank] : 0;
+
+const row = document.createElement("div");
+row.className = "form-row";
+row.innerHTML = `<div style="width:36px;color:var(--muted);font-size:1.1em;flex-shrink:0;">${i+1}</div>
+<input id="bn${i}" type="text" value="${escapeHtml(b.name)}">
+<input id="bv${i}" type="number" value="${currentPrice}" min="0">`;
+container.appendChild(row);
+});
+}
+
+function renderFreeConfig(){
+const container = document.getElementById("freeConfig");
+container.innerHTML = "";
+// 5個まで表示（設定ボタンが多すぎる場合は縦スクロールで対応）
+cfg.freeButtons.forEach((f,i)=>{
+const row = document.createElement("div");
+row.className = "form-row";
+row.innerHTML = `<div style="width:36px;color:var(--muted);font-size:1.1em;flex-shrink:0;">${i+1}</div>
+<input id="fn${i}" type="text" value="${escapeHtml(f.name)}">
+<input id="fc${i}" type="number" value="${f.coeff||1}" step="0.0001">`;
+container.appendChild(row);
+});
+}
+
+document.getElementById("saveSettingsBtn").addEventListener("click", ()=>{
+const tr = Number(document.getElementById("taxInput").value || 0);
+cfg.taxRate = tr;
+cfg.roundMethod = document.getElementById("roundMethod").value || "floor";
+
+const currentRank = cfg.currentRank;
+cfg.buttons.forEach((b,i)=>{
+const nameEl = document.getElementById("bn"+i);
+const valEl = document.getElementById("bv"+i);
+if(nameEl) b.name = nameEl.value || b.name;
+if(valEl) {
+if (!b.prices) b.prices = {};
+b.prices[currentRank] = Number(valEl.value) || 0;
+}
+});
+
+cfg.freeButtons.forEach((f,i)=>{
+const nameEl = document.getElementById("fn"+i);
+const valEl = document.getElementById("fc"+i);
+if(nameEl) f.name = nameEl.value || f.name;
+if(valEl) f.coeff = Number(valEl.value) || 1;
+});
+
+saveCfg();
+renderButtons();
+renderControlButtons();
+renderFreeButtons();
+renderTotals();
+modal.style.display = "none";
+document.body.style.overflow = "";
+});
+
+/* 💡 JSON import/export config */
+document.getElementById("importBtn").addEventListener("click", ()=> document.getElementById("importFile").click());
+document.getElementById("importFile").addEventListener("change", (ev)=>{
+const f = ev.target.files[0]; if(!f) return;
+const r = new FileReader();
+r.onload = e=>{
+try{
+const data = JSON.parse(e.target.result);
+let importedCfg = data;
+if(data.cfg){ importedCfg = data.cfg; }
+
+if(!importedCfg || !Array.isArray(importedCfg.buttons) || !Array.isArray(importedCfg.freeButtons)){
+alert("読み込みエラー: ファイル形式が正しくありません。");
+return;
+}
+
+// ボタン数が足りない場合はDEFAULTから補完
+if (importedCfg.buttons.length < DEFAULT.buttons.length) {
+const startIdx = importedCfg.buttons.length;
+for (let i = startIdx; i < DEFAULT.buttons.length; i++) {
+importedCfg.buttons.push(DEFAULT.buttons[i]);
+}
+}
+if(importedCfg.freeButtons.length < DEFAULT.freeButtons.length) {
+const startIdx = importedCfg.freeButtons.length;
+for (let i = startIdx; i < DEFAULT.freeButtons.length; i++) {
+importedCfg.freeButtons.push(DEFAULT.freeButtons[i]);
+}
+}
+if(!importedCfg.availableRanks || !Array.isArray(importedCfg.availableRanks)){
+importedCfg.availableRanks = DEFAULT.availableRanks;
+}
+
+cfg = Object.assign({}, cfg, importedCfg);
+
+saveCfg();
+renderRankSelector();
+renderButtons();
+renderButtonConfig();
+renderFreeButtons();
+renderFreeConfig();
+renderTotals();
+
+alert("設定を正常に読み込みました。");
+}catch(err){
+alert("読み込みエラー: ファイルの内容が不正です。\n" + err.message)
+}
+ev.target.value = '';
+};
+r.readAsText(f,"utf-8");
+});
+
+document.getElementById("exportSettingsBtn").addEventListener("click", ()=>{
+const blob = new Blob([JSON.stringify(cfg,null,2)], {type:"application/json"});
+const a = document.createElement("a");
+a.href = URL.createObjectURL(blob);
+a.download = `rewardcfg_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.json`;
+a.click();
+alert("設定ファイルのエクスポートを開始しました。");
+});
+/* 💡 end JSON import/export config */
+
+/* 💡 ランク表（テキストファイル）インポート機能 */
+document.getElementById("importPriceTableBtn").addEventListener("click", ()=> document.getElementById("importPriceTableFile").click());
+document.getElementById("importPriceTableFile").addEventListener("change", importPriceTable);
+
+function importPriceTable(ev){
+const f = ev.target.files[0]; if(!f) return;
+
+// 1. ユーザーからランクの列順を取得
+const rankInput = prompt(
+"インポートするランク名をカンマ区切り（例: H,G,F,E,D,C,B,A,S,SS,SSS,顧客請求）で、ファイル内の列順に入力してください。\n\n※この入力は設定に保存され、今後のランク編集の基準となります。",
+(cfg.availableRanks || DEFAULT_RANKS).join(',')
+);
+if (!rankInput) {
+ev.target.value = '';
+return;
+}
+const newRanks = rankInput.split(',').map(r => r.trim()).filter(r => r.length > 0);
+if(newRanks.length === 0){
+alert("ランクが入力されていません。");
+ev.target.value = '';
+return;
+}
+
+const r = new FileReader();
+r.onload = e=>{
+try{
+const textContent = e.target.result;
+const updateCount = parsePriceTableData(textContent, newRanks);
+
+// 成功したらランク設定を更新
+cfg.availableRanks = newRanks;
+cfg.currentRank = newRanks.includes(DEFAULT.currentRank) ? DEFAULT.currentRank : newRanks[0] || DEFAULT.currentRank;
+saveCfg();
+
+renderRankSelector();
+renderButtons();
+renderButtonConfig();
+
+alert(`価格データを正常に読み込みました。\n${updateCount}個のボタンの価格が更新されました。\n現在のランクは「${cfg.currentRank}」に設定されました。`);
+}catch(err){
+alert("価格データ読み込みエラー: ファイルの内容が不正です。\n" + err.message)
+}
+ev.target.value = '';
+};
+r.readAsText(f,"utf-8");
+}
+
+function parsePriceTableData(textContent, newRanks){
+const lines = textContent.trim().split('\n').filter(line => line.trim() !== '');
+let updatedButtonsCount = 0;
+
+lines.forEach(line => {
+// タブまたはコンマで分割を試みる
+let columns = line.split('\t');
+if (columns.length < 2 || columns.length < newRanks.length + 1) {
+columns = line.split(',');
+}
+// 最初の列(項目名)と少なくとも一つのランク価格があることを確認
+if (columns.length < 2) return;
+
+const importedName = columns[0].trim();
+const importedPrices = columns.slice(1);
+
+// 既存のボタン設定で名前が一致するものを探す
+const button = cfg.buttons.find(b => b.name.trim() === importedName);
+
+if (button) {
+let prices = button.prices || {};
+let isUpdated = false;
+
+newRanks.forEach((rank, index) => {
+// インポートされた価格データは newRanksの次に続くため、index+1番目を見る
+if (importedPrices[index] !== undefined) {
+// カンマを削除して数値に変換
+const priceStr = String(importedPrices[index]).trim().replace(/,/g, '');
+const price = toInt(priceStr);
+
+// 有効な数値（0円含む）であれば更新
+if (!isNaN(price) && (price > 0 || priceStr === '0')) {
+prices[rank] = price;
+isUpdated = true;
+}
+}
+});
+
+if(isUpdated){
+button.prices = prices;
+updatedButtonsCount++;
+}
+}
+});
+
+return updatedButtonsCount;
+}
+/* 💡 end ランク表（テキストファイル）インポート機能 */
+
+
+/* init */
+renderRankSelector();
+renderButtons();
+renderControlButtons();
+renderFreeButtons();
+renderStack();
+renderTotals();
+
+/* helpers */
+function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+</script>
+</body>
+</html>
