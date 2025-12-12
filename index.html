@@ -757,7 +757,7 @@ importedCfg.buttons.push(DEFAULT.buttons[i]);
 }
 if(importedCfg.freeButtons.length < DEFAULT.freeButtons.length) {
 const startIdx = importedCfg.freeButtons.length;
-for (let i = startIdx; i < DEFAULT.freeButtons.length; i++) {
+for (let i = importedCfg.freeButtons.length; i < DEFAULT.freeButtons.length; i++) {
 importedCfg.freeButtons.push(DEFAULT.freeButtons[i]);
 }
 }
